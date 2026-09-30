@@ -1,0 +1,9 @@
+model,rule,agreement,identical
+LogisticRegression (with_leak),"id.resp_p in [23,2323,8080,9527]",0.9900868392878386,False
+LogisticRegression (with_leak),proto == tcp,0.9654625480788295,False
+DecisionTree (with_leak),"id.resp_p in [23,2323,8080,9527]",1.0,True
+DecisionTree (with_leak),proto == tcp,0.955549387366668,False
+LogisticRegression (honest),"id.resp_p in [23,2323,8080,9527]",0.955549387366668,False
+LogisticRegression (honest),proto == tcp,1.0,True
+DecisionTree (honest),"id.resp_p in [23,2323,8080,9527]",0.955549387366668,False
+DecisionTree (honest),proto == tcp,1.0,True

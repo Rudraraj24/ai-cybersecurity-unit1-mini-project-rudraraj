@@ -1,0 +1,3 @@
+model,rule,agreement,identical
+MLP-small,proto == tcp,1.0,True
+MLP-deep,proto == tcp,1.0,True

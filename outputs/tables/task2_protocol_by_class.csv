@@ -1,0 +1,4 @@
+proto,Benign,Malicious,malicious_%
+icmp,1471,0,0.0
+tcp,3710,44945,92.37
+udp,33936,1,0.0
