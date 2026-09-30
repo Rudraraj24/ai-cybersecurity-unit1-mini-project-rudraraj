@@ -1,0 +1,11 @@
+# Authored on Windows; may be marked or re-run on Linux/macOS. Normalise text
+# to LF in the repository so line endings never show up as spurious diffs.
+* text=auto eol=lf
+
+*.py   text eol=lf
+*.md   text eol=lf
+*.txt  text eol=lf
+*.ipynb text eol=lf
+
+*.png  binary
+*.gz   binary

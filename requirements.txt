@@ -1,0 +1,16 @@
+# AI in Cyber Security - Unit 1 mini project
+# Versions are pinned to the ones the results in outputs/ were produced with,
+# so a marker re-running the scripts gets the same numbers.
+#
+# Install:  pip install -r requirements.txt
+
+numpy==2.5.3
+pandas==3.0.6
+scikit-learn==1.9.1
+matplotlib==3.11.2
+seaborn==0.13.2
+jupyter==1.1.1
+
+# Only needed by src/make_sample.py, which reads the full capture in Parquet
+# format. Not required to run Tasks 2-4 from the committed sample.
+pyarrow==25.0.1

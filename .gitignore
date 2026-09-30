@@ -1,0 +1,26 @@
+# Virtual environment - recreated from requirements.txt
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipython/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# The full IoT-23 capture is 138 MB and is NOT committed. Only the sampled
+# data/iot23_sample.csv.gz is. See data/README.md for how to obtain the full
+# capture and src/make_sample.py for how the sample is derived from it.
+data/*.parquet
+data/*.pkl
+data/CTU-IoT-*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
