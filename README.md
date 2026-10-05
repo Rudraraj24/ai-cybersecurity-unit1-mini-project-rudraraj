@@ -15,25 +15,54 @@ column meanings and licence.
 
 ## Headline result
 
-All four models — two classical, two neural — reach **exactly the same
-performance**, and each one turns out to be reproducing a single-feature rule:
+Every model is evaluated on two feature configurations: the **full** set, and an
+**honest** set with the three label-leaking columns removed. The two tell
+opposite stories, and that contrast is the project's result.
 
-| Family | Model | Accuracy | Precision (mal.) | Recall (mal.) | PR-AUC | False positives | Train time |
+### Full feature set — the algorithms differ
+
+| Family | Model | Accuracy | Precision (mal.) | F1 | PR-AUC | False positives | Train time |
 |---|---|---|---|---|---|---|---|
-| ML | Logistic Regression | 95.55% | 0.9213 | 1.0000 | 0.9244 | 1,121 | 0.39 s |
-| ML | Decision Tree | 95.55% | 0.9213 | 1.0000 | 0.9211 | 1,121 | 0.33 s |
-| DL | MLP-small (32) | 95.55% | 0.9213 | 1.0000 | 0.9192 | 1,121 | 1.69 s |
-| DL | MLP-deep (128,64,32) | 95.55% | 0.9213 | 1.0000 | 0.9243 | 1,121 | 10.78 s |
+| ML | Logistic Regression | 99.01% | 0.9813 | 0.9906 | 0.9945 | 250 | 0.5 s |
+| ML | **Decision Tree** | **100.00%** | 1.0000 | 1.0000 | 1.0000 | **0** | 0.5 s |
+| DL | MLP-small (32) | 99.01% | 0.9814 | 0.9906 | 0.9945 | 249 | 2.4 s |
+| DL | MLP-deep (128,64,32) | 99.62% | 0.9927 | 0.9963 | 0.9980 | 97 | 26.2 s |
 
-The deep network costs **roughly 25× the training time for +0.00 percentage
-points** (20–33× across runs; timings are the one non-deterministic number here).
+The Decision Tree wins outright — perfect accuracy, zero false positives, and
+joint-fastest training — because it can **represent** the port-lookup rule
+exactly in a few splits. The networks must **approximate** that same step
+function with thousands of weights; MLP-deep spends 25–55× the training time
+(it varies per run) and still doesn't match it. When the true boundary is a
+rule, a rule-based learner wins on accuracy, speed and explainability
+simultaneously.
 
-All four agree with the rule `proto == tcp` on **100.000%** of test predictions.
-They did not learn to detect threats; they learned that in this capture the TCP
-traffic is the scanning traffic.
+### Honest feature set — the algorithms become indistinguishable
 
-That is the finding the project reports, and the reasoning behind it is in
-[Task 2](#task-2--threat-landscape-analysis) below.
+| Family | Model | Accuracy | Precision (mal.) | F1 | PR-AUC | False positives |
+|---|---|---|---|---|---|---|
+| ML | Logistic Regression | 95.55% | 0.9213 | 0.9590 | 0.9244 | 1,121 |
+| ML | Decision Tree | 95.55% | 0.9213 | 0.9590 | 0.9211 | 1,121 |
+| DL | MLP-small | 95.55% | 0.9213 | 0.9590 | 0.9192 | 1,121 |
+| DL | MLP-deep | 95.55% | 0.9213 | 0.9590 | 0.9243 | 1,121 |
+
+Identical to four decimal places, and all four agree with the rule
+`proto == tcp` on **100.000%** of test predictions.
+
+**This is not a tie and not a bug — it is the ceiling of the data**, and
+`src/diagnose_identical_scores.py` proves it with three experiments:
+
+1. **Threshold sweep.** Each model emits only 17–25 distinct probabilities
+   across 25,219 test rows. No threshold separates them.
+2. **Remove the dominating feature** (TCP-only subset). Every model returns
+   recall 1.0000 and FN 0 — they predict "malicious" for all 14,597 TCP flows,
+   i.e. they give up and return the majority class.
+3. **Remove the class imbalance** (balanced training set). The models finally
+   differ — and all become useless, landing within ±0.01 of the no-skill PR-AUC
+   baseline of 0.9214 while accuracy collapses as low as 7.86%.
+
+Once the destination port is gone, Zeek's flow metadata in this capture carries
+essentially **one usable bit — the protocol** — and every algorithm finds it
+immediately.
 
 ---
 
@@ -70,13 +99,14 @@ inside a virtual environment, and loads the dataset.
 ### Run everything
 
 ```bash
-python src/task2_eda.py     # EDA, figures 1-3
-python src/task3_ml.py      # ML models, figures 4-5
-python src/task4_dl.py      # neural networks, figure 6  (needs task3 first)
+python src/task2_eda.py                   # EDA, figures 1-3
+python src/task3_ml.py                    # ML models, figures 4-5
+python src/task4_dl.py                    # neural networks, figure 6 (needs task3 first)
+python src/diagnose_identical_scores.py   # why the honest scores are identical
 ```
 
-Total runtime is roughly 30 seconds. Figures land in `outputs/figures/`, result
-tables in `outputs/tables/`.
+Total runtime is roughly three minutes, most of it MLP-deep on the full feature
+set. Figures land in `outputs/figures/`, result tables in `outputs/tables/`.
 
 ### Layout
 
@@ -90,7 +120,8 @@ tables in `outputs/tables/`.
 │   ├── make_sample.py            rebuilds the sample from the full capture
 │   ├── task2_eda.py              Task 2
 │   ├── task3_ml.py               Task 3
-│   └── task4_dl.py               Task 4
+│   ├── task4_dl.py               Task 4
+│   └── diagnose_identical_scores.py   why the honest-set scores match
 ├── notebooks/
 │   └── mini_project.ipynb        all four tasks in notebook form
 ├── outputs/
@@ -202,49 +233,69 @@ the rule "TCP means malicious". Neither learned behaviour.
 `python src/task4_dl.py` → `outputs/figures/fig6`
 
 Two `MLPClassifier` architectures on the same split, preprocessing and metrics
-as Task 3 — otherwise the comparison would be meaningless.
+as Task 3, and on **both** feature configurations — otherwise the comparison has
+nothing to vary.
 
-### Training time
+### Training time (full feature set)
 
-One representative run (these are wall-clock times and vary between runs):
+Wall-clock, one representative run. These are the **only** numbers in this
+README that change between runs — across repeated runs MLP-deep ranged 26–54 s
+while the classical models stayed under ~1.5 s, so the ratio below is indicative
+rather than exact:
 
-| Model | Time | vs fastest ML |
+| Model | Time | vs fastest |
 |---|---|---|
-| Decision Tree | 0.33 s | 1× |
-| Logistic Regression | 0.39 s | 1.2× |
-| MLP-small (32) | 1.69 s | 5.1× |
-| MLP-deep (128,64,32) | 10.78 s | **~33×** |
+| Logistic Regression | 0.47 s | 1× |
+| Decision Tree | 0.53 s | 1.1× |
+| MLP-small (32) | 2.38 s | 5.1× |
+| MLP-deep (128,64,32) | 26.22 s | **56×** |
 
-### Detection accuracy
+### Detection accuracy (full feature set)
 
-Identical. Best ML 95.55%, best DL 95.55%, difference **+0.00 pp**. PR-AUC is
-marginally *worse* for the networks (0.9243 vs 0.9244).
+| | Best | Model |
+|---|---|---|
+| Machine Learning | **100.00%** | Decision Tree |
+| Deep Learning | 99.62% | MLP-deep |
+| Difference | **−0.38 pp** | DL is *worse* |
+| Fewest false positives | **0** | Decision Tree |
+
+The deep network is both slower and less accurate than a depth-8 tree.
 
 ### Practical feasibility
 
-The deep network carries **14,593 trainable parameters**; the Decision Tree is
-depth-8 and can be printed on one page and read by an analyst. In a SOC an
-alert that cannot be explained is an alert that gets ignored, so the
-interpretable model wins unless the network buys a real accuracy margin. Here
-it buys none.
+MLP-deep carries **14,593 trainable parameters**; the Decision Tree is depth-8
+and fits on one page an analyst can read. In a SOC an alert that cannot be
+explained is an alert that gets ignored — so here the interpretable model wins
+on explainability, accuracy *and* speed at the same time. There is no trade-off
+to make.
 
-### Does extra capacity help?
+The reason is structural: the true decision boundary in this dataset is a
+**rule** (`port ∈ {23, 2323, 8080, 9527}`). A tree represents rules natively and
+finds it exactly. A neural network has to approximate a step function with
+continuous weights, which is why more capacity and ~55× the compute still lands
+short of a perfect score.
 
-No. Both networks also agree with `proto == tcp` on 100.000% of predictions.
-**The ceiling is not the model — it is the data.** Benign traffic in this
-capture is UDP that got answered; malicious traffic is TCP SYNs that did not.
-Those are two different activities wearing two class labels, so there is no
-richer pattern left for a deeper network to find.
+### Does extra capacity help on the honest set?
+
+No. Both networks also agree with `proto == tcp` on 100.000% of predictions, and
+all three diagnostic experiments confirm the limit is the data rather than the
+model. Benign traffic in this capture is UDP that got answered; malicious
+traffic is TCP SYNs that did not. Those are two different activities wearing two
+class labels, so there is no richer pattern for a deeper network to find.
 
 ---
 
 ## What this project concludes
 
 Row-level supervised classification on this capture is not a solved detection
-problem — it is a mislabelled one. Every model tested, from a linear classifier
-to a three-layer network, converges on the same single-feature rule and the
-same 1,121 false positives, because the label was generated from a property of
-the data rather than observed independently.
+problem — it is a mislabelled one.
+
+Given the leaking columns, the four algorithms separate cleanly and a Decision
+Tree wins by reproducing the labelling rule exactly. Take those columns away and
+all four converge on the same single-feature rule and the same 1,121 false
+positives, because the label was generated from a property of the data rather
+than observed independently. The algorithms are only distinguishable while
+they have access to the answer key.
 
 The honest next step is not a bigger model. It is **windowed behavioural
 features** — per-host fan-out, connection rate, share unanswered, and entropy
