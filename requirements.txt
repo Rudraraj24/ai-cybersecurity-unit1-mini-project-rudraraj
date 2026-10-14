@@ -14,3 +14,4 @@ jupyter==1.1.1
 # Only needed by src/make_sample.py, which reads the full capture in Parquet
 # format. Not required to run Tasks 2-4 from the committed sample.
 pyarrow==25.0.1
+reportlab==5.0.1
